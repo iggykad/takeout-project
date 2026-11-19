@@ -4,15 +4,16 @@ from tkinter import ttk as Ttk
 import tkinter.font as tkFont
 from order_states import allowed, can_move
 from tkinter import messagebox
+import config
 
 def get_menu_items():
     try:
         connection = psycopg2.connect(
-        dbname="takeout_system",
-        user="postgres",
-        password="123",
-        host="localhost",
-        port=5432)
+        dbname=config.DB_NAME,
+        user=config.DB_USER,
+        password=config.DB_PASSWORD,
+        host=config.DB_HOST,
+        port=config.DB_PORT)
 
         cursor = connection.cursor()
         cursor.execute("SELECT * FROM menu_items")
@@ -28,11 +29,11 @@ def get_menu_items():
 def get_customers():
     try:
         connection = psycopg2.connect(
-        dbname="takeout_system",
-        user="postgres",
-        password="123",
-        host="localhost",
-        port=5432)
+        dbname=config.DB_NAME,
+        user=config.DB_USER,
+        password=config.DB_PASSWORD,
+        host=config.DB_HOST,
+        port=config.DB_PORT)
 
         cursor = connection.cursor()
         cursor.execute("SELECT * FROM customers")
@@ -48,11 +49,11 @@ def get_customers():
 def get_orders():
     try:
         connection = psycopg2.connect(
-        dbname="takeout_system",
-        user="postgres",
-        password="123",
-        host="localhost",
-        port=5432)
+        dbname=config.DB_NAME,
+        user=config.DB_USER,
+        password=config.DB_PASSWORD,
+        host=config.DB_HOST,
+        port=config.DB_PORT)
 
         cursor = connection.cursor()
         cursor.execute("SELECT * FROM orders ORDER BY order_id")
@@ -67,11 +68,11 @@ def get_orders():
 def get_active_orders():
     try:
         connection = psycopg2.connect(
-        dbname="takeout_system",
-        user="postgres",
-        password="123",
-        host="localhost",
-        port=5432)
+        dbname=config.DB_NAME,
+        user=config.DB_USER,
+        password=config.DB_PASSWORD,
+        host=config.DB_HOST,
+        port=config.DB_PORT)
 
         cursor = connection.cursor()
         cursor.execute("SELECT * FROM orders WHERE status NOT IN ('delivered', 'picked_up') ORDER BY order_id")
@@ -86,11 +87,11 @@ def get_active_orders():
 def get_completed_orders():
     try:
         connection = psycopg2.connect(
-        dbname="takeout_system",
-        user="postgres",
-        password="123",
-        host="localhost",
-        port=5432)
+        dbname=config.DB_NAME,
+        user=config.DB_USER,
+        password=config.DB_PASSWORD,
+        host=config.DB_HOST,
+        port=config.DB_PORT)
 
         cursor = connection.cursor()
         cursor.execute("SELECT * FROM orders WHERE status IN ('delivered', 'picked_up') ORDER BY order_id")
@@ -107,11 +108,11 @@ def get_completed_orders():
 def update_order_status(order_id, new_status):
     try:
         connection = psycopg2.connect(
-            dbname="takeout_system",
-            user="postgres",
-            password="123",
-            host="localhost",
-            port=5432)
+        dbname=config.DB_NAME,
+        user=config.DB_USER,
+        password=config.DB_PASSWORD,
+        host=config.DB_HOST,
+        port=config.DB_PORT)
         
         cursor = connection.cursor()
         cursor.execute("UPDATE orders SET status = %s WHERE order_id = %s", (new_status, order_id))
