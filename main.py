@@ -169,6 +169,18 @@ def advance_order(order_id, order_status, is_delivery):
         messagebox.showinfo("Order update", f"Order #{order_id:04d} complete")
 
 
+def set_row_colour(frame, label, colour):
+    frame.config(bg=colour)
+    label.config(bg=colour)
+
+
+def toggle_details(frame, details):
+    if details.winfo_ismapped() == True:
+        details.pack_forget()
+    
+    else:
+        details.pack(fill="x", padx=10, after=frame)
+
 def show_orders():
 
     for widget in orders_scrollable_frame.winfo_children():
@@ -177,17 +189,38 @@ def show_orders():
     results = get_active_orders()
 
     for row in results:
-        label = tk.Label(orders_scrollable_frame, text=f"Order #{row[0]:04d} | Customer {row[1]} | {row[2]} | {'Delivery' if row[3] else 'Pickup'} | {row[4]}" , bg=BG_COLOUR)
-        label.pack(anchor="w")
+        frame = tk.Frame(orders_scrollable_frame, bg=ROW_COLOUR, cursor="hand2")
+        frame.pack(fill="x", padx=10, pady=4)
+        order_options = tk.Frame(orders_scrollable_frame, bg=HOVER_COLOUR)
+        options_label = tk.Label(order_options, text="Change status?", bg=HOVER_COLOUR)
+        options_label.pack()
+
+        order_text = f"Order #{row[0]:04d} | Customer {row[1]} | {row[2]} | {'Delivery' if row[3] else 'Pickup'} | {row[4]}"
+
+        label = tk.Label(frame, 
+                              text = order_text, 
+                              bg=ROW_COLOUR, 
+                              padx=10, 
+                              pady=8, 
+                              fg="white", 
+                              cursor="hand2")
+    
+
+        label.pack(anchor="w", fill="x")
+        label.bind("<Button-1>", lambda event, f=frame, d=order_options: toggle_details(f, d))
+        for widget in (frame, label):
+            widget.bind("<Enter>", lambda event, f=frame, l=label: set_row_colour(f, l, HOVER_COLOUR))
+            widget.bind("<Leave>", lambda event, f=frame, l=label: set_row_colour(f, l, ROW_COLOUR))
+      
 
 
-        button = tk.Button(orders_scrollable_frame, 
-                           text="Progress order status", 
+        button = tk.Button(order_options, 
+                           text=">> Progress order status >>", 
                            command=lambda order_id = row[0], order_status = row[4], is_delivery = row[3]: 
                            advance_order(order_id, order_status, is_delivery),
                            )
         
-        button.pack(anchor="w")
+        button.pack(anchor="center")
 
 
 def show_completed():
@@ -211,6 +244,8 @@ window.state("zoomed")
 ####################################################################
 
 BG_COLOUR = "#346f77"
+ROW_COLOUR = "#1C4F79"
+HOVER_COLOUR = "#7CA0BD"
 custom_font = tkFont.Font(family="Lexend", weight="normal", size="50")
 
 style = Ttk.Style()
