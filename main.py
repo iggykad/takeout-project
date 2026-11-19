@@ -175,11 +175,26 @@ def set_row_colour(frame, label, colour):
 
 
 def toggle_details(frame, details):
+
     if details.winfo_ismapped() == True:
-        details.pack_forget()
+        shrink_details(details, 60)
     
     else:
         details.pack(fill="x", padx=10, after=frame)
+        details.config(height=1)
+        grow_details(details, 1)
+
+def grow_details(details, height):
+    details.config(height=height)
+    if height < 60:
+        details.after(10, lambda: grow_details(details, height + 6))
+
+def shrink_details(details, height):
+    details.config(height=height)
+    if height > 1:
+        details.after(10, lambda: shrink_details(details, height - 6))
+    else:
+        details.pack_forget()
 
 def show_orders():
 
@@ -191,7 +206,8 @@ def show_orders():
     for row in results:
         frame = tk.Frame(orders_scrollable_frame, bg=ROW_COLOUR, cursor="hand2")
         frame.pack(fill="x", padx=10, pady=4)
-        order_options = tk.Frame(orders_scrollable_frame, bg=HOVER_COLOUR)
+        order_options = tk.Frame(orders_scrollable_frame, bg=HOVER_COLOUR, height=60)
+        order_options.pack_propagate(False)
         options_label = tk.Label(order_options, text="Change status?", bg=HOVER_COLOUR)
         options_label.pack()
 
