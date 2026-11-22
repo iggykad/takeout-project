@@ -75,7 +75,18 @@ def get_active_orders():
         port=config.DB_PORT)
 
         cursor = connection.cursor()
-        cursor.execute("SELECT * FROM orders WHERE status NOT IN ('delivered', 'picked_up') ORDER BY order_id")
+        cursor.execute(
+            """SELECT orders.*, totals.total
+            FROM orders
+            JOIN (
+                SELECT order_items.order_id, SUM(menu_items.price * order_items.quantity) AS total
+                FROM order_items
+                JOIN menu_items ON order_items.item_id = menu_items.item_id
+                GROUP BY order_items.order_id
+            ) AS totals ON orders.order_id = totals.order_id
+            WHERE orders.status NOT IN ('delivered', 'picked_up')
+            ORDER BY orders.order_id
+            """)
         results = cursor.fetchall()
         print("Database dialogue successful")
 
@@ -94,7 +105,18 @@ def get_completed_orders():
         port=config.DB_PORT)
 
         cursor = connection.cursor()
-        cursor.execute("SELECT * FROM orders WHERE status IN ('delivered', 'picked_up') ORDER BY order_id")
+        cursor.execute(
+                    """SELECT orders.*, totals.total
+                    FROM orders
+                    JOIN (
+                        SELECT order_items.order_id, SUM(menu_items.price * order_items.quantity) AS total
+                        FROM order_items
+                        JOIN menu_items ON order_items.item_id = menu_items.item_id
+                        GROUP BY order_items.order_id
+                    ) AS totals ON orders.order_id = totals.order_id
+                    WHERE orders.status IN ('delivered', 'picked_up')
+                    ORDER BY orders.order_id
+                    """)
         results = cursor.fetchall()
         print("Database dialogue successful")
 
@@ -208,7 +230,7 @@ def show_orders():
         frame.pack(fill="x", padx=10, pady=4)
         order_options = tk.Frame(orders_scrollable_frame, bg=HOVER_COLOUR, height=60)
         order_options.pack_propagate(False)
-        options_label = tk.Label(order_options, text="Change status?", bg=HOVER_COLOUR)
+        options_label = tk.Label(order_options, text=f"{'Delivery' if row[3] else 'Pickup'} | {row[4]} | Total: £{row[5]}", bg=HOVER_COLOUR)
         options_label.pack()
 
         order_text = f"Order #{row[0]:04d} | Customer {row[1]} | {row[2]} | {'Delivery' if row[3] else 'Pickup'} | {row[4]}"
@@ -246,8 +268,10 @@ def show_completed():
 
     results = get_completed_orders()
 
+    
+
     for row in results:
-            label = tk.Label(completed_scrollable_frame, text=f"Order #{row[0]:04d} | Customer {row[1]} | {row[2]} | {'Delivery' if row[3] else 'Pickup'} | {row[4]}", bg=BG_COLOUR)
+            label = tk.Label(completed_scrollable_frame, text=f"Order #{row[0]:04d} | Customer {row[1]} | {row[2]} | {'Delivery' if row[3] else 'Pickup'} | {row[4]} | Total: £{row[5]}", bg=BG_COLOUR)
             label.pack(anchor="w")
 
 ####################################################################

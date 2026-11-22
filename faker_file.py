@@ -17,10 +17,17 @@ fake = Faker()
 # Orders
 start_order_id = 8
 
-with open("fake_orders.sql", "w") as f:
-    for i in range(15):
-        order_id = start_order_id + i
-        customer_id = random.randint(7, 11)
-        order_date = fake.date_between(start_date="-30d", end_date="today")
-        is_delivery = random.choice([True, False])
-        f.write(f"INSERT INTO orders (order_id, customer_id, order_date, is_delivery) VALUES ({order_id}, {customer_id}, '{order_date}', {is_delivery});\n")
+#with open("fake_orders.sql", "w") as f:
+#    for i in range(15):
+#        order_id = start_order_id + i
+#        customer_id = random.randint(7, 11)
+#        order_date = fake.date_between(start_date="-30d", end_date="today")
+#        is_delivery = random.choice([True, False])
+#        f.write(f"INSERT INTO orders (order_id, customer_id, order_date, is_delivery) VALUES ({order_id}, {customer_id}, '{order_date}', {is_delivery});\n")
+
+with open("fake_order_items.sql", 'w') as f:
+    for order_id in range(1, 23):
+        items = random.sample(range(1, 48), 3)
+        for item_id in items:
+            quantity = random.randint(1, 3)
+            f.write(f"INSERT INTO order_items (order_id, item_id, quantity) VALUES ({order_id}, {item_id}, {quantity});\n")
