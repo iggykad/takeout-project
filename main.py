@@ -78,7 +78,7 @@ def get_active_orders():
         cursor.execute(
             """SELECT orders.*, totals.total
             FROM orders
-            JOIN (
+            LEFT JOIN (
                 SELECT order_items.order_id, SUM(menu_items.price * order_items.quantity) AS total
                 FROM order_items
                 JOIN menu_items ON order_items.item_id = menu_items.item_id
@@ -108,7 +108,7 @@ def get_completed_orders():
         cursor.execute(
                     """SELECT orders.*, totals.total
                     FROM orders
-                    JOIN (
+                    LEFT JOIN (
                         SELECT order_items.order_id, SUM(menu_items.price * order_items.quantity) AS total
                         FROM order_items
                         JOIN menu_items ON order_items.item_id = menu_items.item_id
@@ -125,7 +125,25 @@ def get_completed_orders():
     except Exception as e:
         print(f"ERROR: {e}")
 
+def insert_order(customer_id, is_delivery):
+    try:
+        connection = psycopg2.connect(
+            dbname=config.DB_NAME,
+            user=config.DB_USER,
+            password=config.DB_PASSWORD,
+            host=config.DB_HOST,
+            port=config.DB_PORT)
 
+        cursor = connection.cursor()
+        cursor.execute(
+            """INSERT INTO orders (order_id, customer_id, order_date, is_delivery)
+            VALUES ((SELECT MAX(order_id) + 1 FROM orders), %s, CURRENT_DATE, %s)""",
+            (customer_id, is_delivery))
+
+        connection.commit()
+
+    except Exception as e:
+        print(f"ERROR: {e}")
 
 def update_order_status(order_id, new_status):
     try:
@@ -218,6 +236,34 @@ def shrink_details(details, height):
     else:
         details.pack_forget()
 
+def open_new_order_form():
+    form = tk.Toplevel(window)
+    form.title("New order")
+    form.geometry("400x300")
+
+    customers = get_customers()
+    names = [row[1] for row in customers]
+    picker = Ttk.Combobox(form, values=names, state="readonly")
+    picker.pack(pady=10)
+
+    delivery_choice = tk.BooleanVar(value=True)
+    tk.Radiobutton(form, text="Delivery", variable=delivery_choice, value=True).pack()
+    tk.Radiobutton(form, text="Pickup", variable=delivery_choice, value=False).pack()
+    tk.Button(form, text = "Create order",
+              command=lambda: create_order(picker, customers, delivery_choice, form)).pack(pady=10)
+
+def create_order(picker, customers, delivery_choice, form):
+    position = picker.current()
+    if position == -1:
+        return
+    customer_id = customers[position][0]
+    insert_order(customer_id, delivery_choice.get())
+    show_orders()
+    form.destroy()
+
+
+
+
 def show_orders():
 
     for widget in orders_scrollable_frame.winfo_children():
@@ -230,10 +276,11 @@ def show_orders():
         frame.pack(fill="x", padx=10, pady=4)
         order_options = tk.Frame(orders_scrollable_frame, bg=HOVER_COLOUR, height=60)
         order_options.pack_propagate(False)
-        options_label = tk.Label(order_options, text=f"{'Delivery' if row[3] else 'Pickup'} | {row[4]} | Total: £{row[5]}", bg=HOVER_COLOUR)
+        total = row[5] or 0
+        options_label = tk.Label(order_options, text=f"{'Delivery' if row[3] else 'Pickup'} | {row[4]} | Total: £{total}", bg=HOVER_COLOUR)
         options_label.pack()
 
-        order_text = f"Order #{row[0]:04d} | Customer {row[1]} | {row[2]} | {'Delivery' if row[3] else 'Pickup'} | {row[4]}"
+        order_text = f"Order #{row[0]:04d} | Customer {row[1]} | {row[2]} | {'Delivery' if row[3] else 'Pickup'} | {row[4]} | Total: {total}"
 
         label = tk.Label(frame, 
                               text = order_text, 
@@ -271,7 +318,7 @@ def show_completed():
     
 
     for row in results:
-            label = tk.Label(completed_scrollable_frame, text=f"Order #{row[0]:04d} | Customer {row[1]} | {row[2]} | {'Delivery' if row[3] else 'Pickup'} | {row[4]} | Total: £{row[5]}", bg=BG_COLOUR)
+            label = tk.Label(completed_scrollable_frame, text=f"Order #{row[0]:04d} | {row[2]} | {'Delivery' if row[3] else 'Pickup'} | Total: £{row[5]}", bg=BG_COLOUR)
             label.pack(anchor="w")
 
 ####################################################################
@@ -363,9 +410,13 @@ orders_scrollable_frame = tk.Frame(orders_canvas, bg=BG_COLOUR)
 orders_canvas.create_window((0, 0), window=orders_scrollable_frame, anchor="nw")
 orders_tab.configure(bg=BG_COLOUR)
 
+new_order_button = tk.Button(orders_tab, text="+ New order", command=open_new_order_form)
+new_order_button.pack(side="top", anchor="w", padx=10, pady=10)
+
 orders_scrollable_frame.bind("<Configure>", lambda e: orders_canvas.configure(
     scrollregion=orders_canvas.bbox("all")
 ))
+
 
 orders_scrollbar.pack(side="right", fill="y")
 orders_canvas.pack(side="left", fill="both", expand="True")
