@@ -78,7 +78,7 @@ def get_active_orders():
 
         cursor = connection.cursor()
         cursor.execute(
-            """SELECT orders.*, totals.total
+            """SELECT orders.*, totals.total, customers.customer_name
             FROM orders
             LEFT JOIN (
                 SELECT order_items.order_id, SUM(menu_items.price * order_items.quantity) AS total
@@ -86,6 +86,7 @@ def get_active_orders():
                 JOIN menu_items ON order_items.item_id = menu_items.item_id
                 GROUP BY order_items.order_id
             ) AS totals ON orders.order_id = totals.order_id
+            JOIN customers ON orders.customer_id = customers.customer_id
             WHERE orders.status NOT IN ('delivered', 'picked_up')
             ORDER BY orders.order_id
             """)
@@ -236,9 +237,10 @@ def advance_order(order_id, order_status, is_delivery):
         messagebox.showinfo("Order update", f"Order #{order_id:04d} complete")
 
 
-def set_row_colour(frame, label, colour):
+def set_row_colour(frame, colour):
     frame.config(bg=colour)
-    label.config(bg=colour)
+    for child in frame.winfo_children():
+        child.config(bg=colour)
 
 
 def toggle_details(frame, details):
@@ -263,33 +265,44 @@ def shrink_details(details, height):
     else:
         details.pack_forget()
 
+def add_button_hover(button):
+    button.bind("<Enter>", lambda event: button.config(bg=ACCENT_COLOUR))
+    button.bind("<Leave>", lambda event: button.config(bg=HOVER_COLOUR))
+
 def open_new_order_form():
     form = tk.Toplevel(window)
     form.title("New order")
     form.config(bg=BG_COLOUR)
     form.geometry("400x400")
+    tk.Label(form, text="NEW ORDER", bg=BG_COLOUR, fg=TEXT_COLOUR, font=FONT_HEADING).pack(pady=(15, 5))
 
     customers = get_customers()
     names = [row[1] for row in customers]
     picker = Ttk.Combobox(form, values=names, state="readonly")
+    tk.Label(form, text="CUSTOMER", bg=BG_COLOUR, fg=ACCENT_COLOUR, font=FONT_BODY).pack(pady=(10, 0))
     picker.pack(pady=10)
 
     delivery_choice = tk.BooleanVar(value=True)
+    tk.Label(form, text="TYPE", bg=BG_COLOUR, fg=ACCENT_COLOUR, font=FONT_BODY).pack(pady=(10, 0))
     tk.Radiobutton(form, text="Delivery", variable=delivery_choice, value=True, bg=BG_COLOUR, fg=TEXT_COLOUR, selectcolor=ROW_COLOUR, font=FONT_BODY).pack()
     tk.Radiobutton(form, text="Pickup", variable=delivery_choice, value=False, bg=BG_COLOUR, fg=TEXT_COLOUR, selectcolor=ROW_COLOUR, font=FONT_BODY).pack()
 
     menu = get_menu_items()
     dish_names = [row[1] for row in menu]
+    tk.Label(form, text="DISH", bg=BG_COLOUR, fg=ACCENT_COLOUR, font=FONT_BODY).pack(pady=(10, 0))
     dish_picker = Ttk.Combobox(form, values=dish_names, state="readonly")
     dish_picker.pack(pady=5)
 
+    tk.Label(form, text="QUANTITY", bg=BG_COLOUR, fg=ACCENT_COLOUR, font=FONT_BODY).pack(pady=(10, 0))
     quantity_box = tk.Spinbox(form, from_=1, to=10, width=5)
     quantity_box.pack(pady=5)
 
-    tk.Button(form, text="Create order",
+    create_button = tk.Button(form, text="Create order",
           command=lambda: create_order(picker, customers, delivery_choice, form, dish_picker, quantity_box, menu),
-          bg=ROW_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY, relief="flat",
-          cursor="hand2", activebackground=HOVER_COLOUR).pack(pady=10)
+          bg=HOVER_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY, relief="flat",
+          cursor="hand2", activebackground=HOVER_COLOUR)
+    create_button.pack(pady=10)
+    add_button_hover(create_button)
 
 def create_order(picker, customers, delivery_choice, form, dish_picker, quantity_box, menu):
 
@@ -332,33 +345,36 @@ def show_orders():
         options_label = tk.Label(order_options, text=f"{'Delivery' if row[3] else 'Pickup'} | {row[4]} | Total: £{total}", bg=HOVER_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY)
         options_label.pack()
 
-        order_text = f"Order #{row[0]:04d} | Customer {row[1]} | {row[2]} | {'Delivery' if row[3] else 'Pickup'} | {row[4]} | Total: {total}"
+        values = [
+            f"#{row[0]:04d}",
+            row[6],
+            row[2],
+            'Delivery' if row[3] else 'Pickup',
+            row[4],
+            f"£{total}",
+        ]
 
-        label = tk.Label(frame, 
-                              text = order_text, 
-                              bg=ROW_COLOUR, 
-                              padx=10, 
-                              pady=8, 
-                              fg=TEXT_COLOUR,
-                              font=FONT_BODY,
-                              cursor="hand2")
+        cells = []
+        for column, value in enumerate(values):
+            cell = tk.Label(frame, text=value, bg=ROW_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY, anchor="w", padx=10, pady=8, cursor="hand2", width=COLUMN_WIDTHS[column])
+            cell.grid(row=0, column=column, sticky="w")
+            cells.append(cell)
     
-
-        label.pack(anchor="w", fill="x")
-        label.bind("<Button-1>", lambda event, f=frame, d=order_options: toggle_details(f, d))
-        for widget in (frame, label):
-            widget.bind("<Enter>", lambda event, f=frame, l=label: set_row_colour(f, l, HOVER_COLOUR))
-            widget.bind("<Leave>", lambda event, f=frame, l=label: set_row_colour(f, l, ROW_COLOUR))
+        for widget in [frame] + cells:
+            widget.bind("<Button-1>", lambda event, f=frame, d=order_options: toggle_details(f, d))
+            widget.bind("<Enter>", lambda event, f=frame: set_row_colour(f, HOVER_COLOUR))
+            widget.bind("<Leave>", lambda event, f=frame: set_row_colour(f, ROW_COLOUR))
       
 
 
         button = tk.Button(order_options, 
                            text=">> Progress order status >>", 
                            command=lambda order_id = row[0], order_status = row[4], is_delivery = row[3]: 
-                           advance_order(order_id, order_status, is_delivery), bg=ROW_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY, relief="flat", cursor="hand2", activebackground=HOVER_COLOUR
+                           advance_order(order_id, order_status, is_delivery), bg=HOVER_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY, relief="flat", cursor="hand2", activebackground=HOVER_COLOUR
                            )
         
         button.pack(anchor="center")
+        add_button_hover(button)
 
 
 def show_completed():
@@ -386,9 +402,11 @@ window.state("zoomed")
 BG_COLOUR = "#1E1E1E"
 ROW_COLOUR = "#2D2D2D"
 HOVER_COLOUR = "#3A3A3A"
-FONT_BODY = ("Consolas", 14)
+FONT_BODY = ("Roboto", 12)
 FONT_HEADING = ("Consolas", 20, "bold")
 TEXT_COLOUR = "#D8D8C0"
+ACCENT_COLOUR = "#C8A24A"
+COLUMN_WIDTHS = [8, 22, 14, 12, 18, 10]
 
 style = Ttk.Style()
 style.theme_use("default") #REQUIRED FOR COLOUR CUSTOMISATION
@@ -465,8 +483,18 @@ orders_scrollable_frame = tk.Frame(orders_canvas, bg=BG_COLOUR)
 orders_canvas.create_window((0, 0), window=orders_scrollable_frame, anchor="nw")
 orders_tab.configure(bg=BG_COLOUR)
 
-new_order_button = tk.Button(orders_tab, text="+ New order", command=open_new_order_form, bg=ROW_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY, relief="flat", cursor="hand2")
+new_order_button = tk.Button(orders_tab, text="+ New order", command=open_new_order_form, bg=HOVER_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY, relief="flat", cursor="hand2",)
 new_order_button.pack(side="top", anchor="w", padx=10, pady=10)
+add_button_hover(new_order_button)
+
+HEADERS = ["ORDER", "CUSTOMER", "DATE", "TYPE", "STATUS", "TOTAL"]
+
+header_frame = tk.Frame(orders_tab, bg=BG_COLOUR)
+header_frame.pack(side="top", fill="x", padx=10)
+
+for column, name in enumerate(HEADERS):
+    header_cell = tk.Label(header_frame, text=name, bg=BG_COLOUR, fg=ACCENT_COLOUR, font=FONT_BODY, anchor="w", padx=10, width=COLUMN_WIDTHS[column])
+    header_cell.grid(row=0, column=column, sticky="w")
 
 orders_scrollable_frame.bind("<Configure>", lambda e: orders_canvas.configure(
     scrollregion=orders_canvas.bbox("all")
