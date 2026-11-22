@@ -195,8 +195,10 @@ def show_menu():
 
     results = get_menu_items()
 
+    
+
     for row in results:
-        label = tk.Label(menu_scrollable_frame, text=f"{row[1]} | £{row[2]} | {row[3]}", bg=BG_COLOUR)
+        label = tk.Label(menu_scrollable_frame, text=f"{row[1]} | £{row[2]} | {row[3]}", bg=BG_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY,)
         label.pack(anchor="w")
 
 
@@ -209,7 +211,7 @@ def show_customers():
     results = get_customers()
 
     for row in results:
-        label = tk.Label(customers_scrollable_frame, text=f"{row[1]} | {row[2]} | {row[3]}", bg=BG_COLOUR)
+        label = tk.Label(customers_scrollable_frame, text=f"{row[1]} | {row[2]} | {row[3]}", bg=BG_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY)
         label.pack(anchor="w")
 
 
@@ -240,7 +242,7 @@ def set_row_colour(frame, label, colour):
 def toggle_details(frame, details):
 
     if details.winfo_ismapped() == True:
-        shrink_details(details, 60)
+        shrink_details(details, 90)
     
     else:
         details.pack(fill="x", padx=10, after=frame)
@@ -249,7 +251,7 @@ def toggle_details(frame, details):
 
 def grow_details(details, height):
     details.config(height=height)
-    if height < 60:
+    if height < 90:
         details.after(10, lambda: grow_details(details, height + 6))
 
 def shrink_details(details, height):
@@ -262,7 +264,8 @@ def shrink_details(details, height):
 def open_new_order_form():
     form = tk.Toplevel(window)
     form.title("New order")
-    form.geometry("400x300")
+    form.config(bg=BG_COLOUR)
+    form.geometry("400x400")
 
     customers = get_customers()
     names = [row[1] for row in customers]
@@ -270,19 +273,42 @@ def open_new_order_form():
     picker.pack(pady=10)
 
     delivery_choice = tk.BooleanVar(value=True)
-    tk.Radiobutton(form, text="Delivery", variable=delivery_choice, value=True).pack()
-    tk.Radiobutton(form, text="Pickup", variable=delivery_choice, value=False).pack()
-    tk.Button(form, text = "Create order",
-              command=lambda: create_order(picker, customers, delivery_choice, form)).pack(pady=10)
+    tk.Radiobutton(form, text="Delivery", variable=delivery_choice, value=True, bg=BG_COLOUR, fg=TEXT_COLOUR, selectcolor=ROW_COLOUR, font=FONT_BODY).pack()
+    tk.Radiobutton(form, text="Pickup", variable=delivery_choice, value=False, bg=BG_COLOUR, fg=TEXT_COLOUR, selectcolor=ROW_COLOUR, font=FONT_BODY).pack()
 
-def create_order(picker, customers, delivery_choice, form):
+    menu = get_menu_items()
+    dish_names = [row[1] for row in menu]
+    dish_picker = Ttk.Combobox(form, values=dish_names, state="readonly")
+    dish_picker.pack(pady=5)
+
+    quantity_box = tk.Spinbox(form, from_=1, to=10, width=5)
+    quantity_box.pack(pady=5)
+
+    tk.Button(form, text="Create order",
+          command=lambda: create_order(picker, customers, delivery_choice, form, dish_picker, quantity_box, menu),
+          bg=ROW_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY, relief="flat",
+          cursor="hand2", activebackground=HOVER_COLOUR).pack(pady=10)
+
+def create_order(picker, customers, delivery_choice, form, dish_picker, quantity_box, menu):
+
     position = picker.current()
+
     if position == -1:
         return
+    
     customer_id = customers[position][0]
     new_id = insert_order(customer_id, delivery_choice.get())
+
+    dish_position = dish_picker.current()
+    quantity = int(quantity_box.get())
+
+    if dish_position != -1:
+        dish_id = menu[dish_position][0]
+        item_save(new_id, dish_id, quantity)
+
     show_orders()
     form.destroy()
+
     messagebox.showinfo("Order created", f"Order #{new_id:04d} created")
 
 
@@ -298,10 +324,10 @@ def show_orders():
     for row in results:
         frame = tk.Frame(orders_scrollable_frame, bg=ROW_COLOUR, cursor="hand2")
         frame.pack(fill="x", padx=10, pady=4)
-        order_options = tk.Frame(orders_scrollable_frame, bg=HOVER_COLOUR, height=60)
+        order_options = tk.Frame(orders_scrollable_frame, bg=HOVER_COLOUR, height=90)
         order_options.pack_propagate(False)
         total = row[5] or 0
-        options_label = tk.Label(order_options, text=f"{'Delivery' if row[3] else 'Pickup'} | {row[4]} | Total: £{total}", bg=HOVER_COLOUR)
+        options_label = tk.Label(order_options, text=f"{'Delivery' if row[3] else 'Pickup'} | {row[4]} | Total: £{total}", bg=HOVER_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY)
         options_label.pack()
 
         order_text = f"Order #{row[0]:04d} | Customer {row[1]} | {row[2]} | {'Delivery' if row[3] else 'Pickup'} | {row[4]} | Total: {total}"
@@ -311,7 +337,8 @@ def show_orders():
                               bg=ROW_COLOUR, 
                               padx=10, 
                               pady=8, 
-                              fg="white", 
+                              fg=TEXT_COLOUR,
+                              font=FONT_BODY,
                               cursor="hand2")
     
 
@@ -326,7 +353,7 @@ def show_orders():
         button = tk.Button(order_options, 
                            text=">> Progress order status >>", 
                            command=lambda order_id = row[0], order_status = row[4], is_delivery = row[3]: 
-                           advance_order(order_id, order_status, is_delivery),
+                           advance_order(order_id, order_status, is_delivery), bg=ROW_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY, relief="flat", cursor="hand2", activebackground=HOVER_COLOUR
                            )
         
         button.pack(anchor="center")
@@ -342,7 +369,7 @@ def show_completed():
     
 
     for row in results:
-            label = tk.Label(completed_scrollable_frame, text=f"Order #{row[0]:04d} | {row[2]} | {'Delivery' if row[3] else 'Pickup'} | Total: £{row[5]}", bg=BG_COLOUR)
+            label = tk.Label(completed_scrollable_frame, text=f"Order #{row[0]:04d} | {row[2]} | {'Delivery' if row[3] else 'Pickup'} | Total: £{row[5]}", bg=BG_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY)
             label.pack(anchor="w")
 
 ####################################################################
@@ -354,24 +381,26 @@ window.maxsize(1920, 1080)
 window.state("zoomed")
 ####################################################################
 
-BG_COLOUR = "#346f77"
-ROW_COLOUR = "#1C4F79"
-HOVER_COLOUR = "#7CA0BD"
-custom_font = tkFont.Font(family="Lexend", weight="normal", size="50")
+BG_COLOUR = "#1E1E1E"
+ROW_COLOUR = "#2D2D2D"
+HOVER_COLOUR = "#3A3A3A"
+FONT_BODY = ("Consolas", 14)
+FONT_HEADING = ("Consolas", 20, "bold")
+TEXT_COLOUR = "#D8D8C0"
 
 style = Ttk.Style()
 style.theme_use("default") #REQUIRED FOR COLOUR CUSTOMISATION
 style.configure("TNotebook.Tab",
-                background="#FFFFFF",
-                foreground="#000000",
+                background= ROW_COLOUR,
+                foreground=TEXT_COLOUR,
                 padding=[10, 5]
 )
 style.map("TNotebook.Tab",
-          background=[("selected", "#555555")])
+          background=[("selected", HOVER_COLOUR)])
 
 ####################################################################
 
-title = tk.Label(text="Restaurant Manager ALPHA", font=custom_font)
+title = tk.Label(text="Restaurant Manager ALPHA", font=FONT_HEADING, bg=BG_COLOUR, fg=TEXT_COLOUR)
 title.pack()
 
 tabs = Ttk.Notebook(window)
@@ -434,7 +463,7 @@ orders_scrollable_frame = tk.Frame(orders_canvas, bg=BG_COLOUR)
 orders_canvas.create_window((0, 0), window=orders_scrollable_frame, anchor="nw")
 orders_tab.configure(bg=BG_COLOUR)
 
-new_order_button = tk.Button(orders_tab, text="+ New order", command=open_new_order_form)
+new_order_button = tk.Button(orders_tab, text="+ New order", command=open_new_order_form, bg=ROW_COLOUR, fg=TEXT_COLOUR, font=FONT_BODY, relief="flat", cursor="hand2")
 new_order_button.pack(side="top", anchor="w", padx=10, pady=10)
 
 orders_scrollable_frame.bind("<Configure>", lambda e: orders_canvas.configure(
