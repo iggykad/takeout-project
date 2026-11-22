@@ -137,13 +137,36 @@ def insert_order(customer_id, is_delivery):
         cursor = connection.cursor()
         cursor.execute(
             """INSERT INTO orders (order_id, customer_id, order_date, is_delivery)
-            VALUES ((SELECT MAX(order_id) + 1 FROM orders), %s, CURRENT_DATE, %s)""",
+            VALUES ((SELECT MAX(order_id) + 1 FROM orders), %s, CURRENT_DATE, %s) RETURNING order_id""",
             (customer_id, is_delivery))
+        new_id = cursor.fetchone()[0]
+        connection.commit()
+        return new_id
+
+    except Exception as e:
+        print(f"ERROR: {e}")
+
+def item_save(order_id, item_id, quantity):
+    try:
+        connection = psycopg2.connect(
+            dbname=config.DB_NAME,
+            user=config.DB_USER,
+            password=config.DB_PASSWORD,
+            host=config.DB_HOST,
+            port=config.DB_PORT)
+
+        cursor = connection.cursor()
+        cursor.execute(
+            """INSERT INTO order_items (order_id, item_id, quantity) VALUES (%s, %s, %s)""",
+            (order_id, item_id, quantity))
 
         connection.commit()
 
     except Exception as e:
         print(f"ERROR: {e}")
+
+
+
 
 def update_order_status(order_id, new_status):
     try:
@@ -257,9 +280,10 @@ def create_order(picker, customers, delivery_choice, form):
     if position == -1:
         return
     customer_id = customers[position][0]
-    insert_order(customer_id, delivery_choice.get())
+    new_id = insert_order(customer_id, delivery_choice.get())
     show_orders()
     form.destroy()
+    messagebox.showinfo("Order created", f"Order #{new_id:04d} created")
 
 
 
