@@ -6,6 +6,8 @@ from order_states import allowed, can_move
 from tkinter import messagebox
 import config
 
+ANIMATION_STEP = 30
+
 def get_menu_items():
     try:
         connection = psycopg2.connect(
@@ -252,12 +254,12 @@ def toggle_details(frame, details):
 def grow_details(details, height):
     details.config(height=height)
     if height < 90:
-        details.after(10, lambda: grow_details(details, height + 6))
+        details.after(10, lambda: grow_details(details, height + ANIMATION_STEP))
 
 def shrink_details(details, height):
     details.config(height=height)
     if height > 1:
-        details.after(10, lambda: shrink_details(details, height - 6))
+        details.after(10, lambda: shrink_details(details, height - ANIMATION_STEP))
     else:
         details.pack_forget()
 
